@@ -1,24 +1,44 @@
+import os
 from flask import Flask, redirect, session, render_template, Blueprint, request, jsonify
 from auth import auth_bp
 from utils import utils_bp
 from chatbot.chat import chatbot_response 
-from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 import tensorflow as tf
 from PIL import Image
 import numpy as np
-import os
 import base64
 import io
 
+# Suppress TensorFlow logging
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+tf.get_logger().setLevel('ERROR')
+
 app = Flask(__name__)
 
-app.secret_key = 'supersecretkey'
-interpreter = tf.lite.Interpreter(model_path="models/converted_model.tflite")
-interpreter.allocate_tensors()
+# Configuration
+app.secret_key = os.environ.get('SECRET_KEY', 'fallback-secret-key')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+# Model Loading Function
+def load_tflite_model(model_path):
+    """Load and allocate TFLite model with error handling"""
+    try:
+        interpreter = tf.lite.Interpreter(model_path=model_path)
+        interpreter.allocate_tensors()
+        return interpreter
+    except Exception as e:
+        print(f"Error loading model {model_path}: {str(e)}")
+        raise
+
+# Load Models
+try:
+    interpreter = load_tflite_model("models/converted_model.tflite")
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+except Exception as e:
+    print(f"Failed to load main model: {str(e)}")
+    interpreter = None
 
 label_map = [
     'gandum_Healthy',
@@ -86,11 +106,16 @@ def preprocess_image(image, target_size=(224, 224)):
     return np.expand_dims(img_array, axis=0)
 
 def predict_image(image):
-    processed_image = preprocess_image(image)
-    interpreter.set_tensor(input_details[0]['index'], processed_image)
-    interpreter.invoke()
-    output_data = interpreter.get_tensor(output_details[0]['index'])
-    return output_data[0]
+    """Safe prediction wrapper"""
+    try:
+        processed_image = preprocess_image(image)
+        interpreter.set_tensor(input_details[0]['index'], processed_image)
+        interpreter.invoke()
+        return interpreter.get_tensor(output_details[0]['index'])[0]
+    except Exception as e:
+        print(f"Prediction error: {str(e)}")
+        raise
+
 
 def predict_with_tflite(interpreter, image_array):
     input_details = interpreter.get_input_details()
@@ -109,27 +134,31 @@ def index():
 
 @app.route('/predict-main', methods=['POST'])
 def predict():
-    result = None
-    image = None
+    """Handle image prediction"""
+    if not interpreter:
+        return render_template('error.html', message="Model not loaded"), 500
 
-    if 'imageData' in request.form and request.form['imageData']:
-        image_data = request.form['imageData'].split(',')[1]
-        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-    elif 'image' in request.files:
-        image = Image.open(request.files['image'].stream)
+    try:
+        image = None
+        if 'imageData' in request.form:
+            image_data = request.form['imageData'].split(',')[1]
+            image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        elif 'image' in request.files:
+            image = Image.open(request.files['image'].stream)
 
-    if image:
+        if not image:
+            return render_template('weather.html', error="No image provided")
+
         prediction = predict_image(image)
         label_full = label_map[np.argmax(prediction)]
+        plant, disease = label_full.split('_', 1)
+        result = f"{plant.capitalize()} - {disease.replace('_', ' ')}"
 
-        # Format output
-        if '_' in label_full:
-            plant, disease = label_full.split('_', 1)
-            result = f"{plant.capitalize()} - {disease.replace('_', ' ')}"
-        else:
-            result = label_full
+        return render_template('weather.html', result=result)
 
-    return render_template('weather.html', result=result)
+    except Exception as e:
+        print(f"Prediction error: {str(e)}")
+        return render_template('weather.html', error="Prediction failed"), 500
 
 @app.route('/predict-plant', methods=['POST'])
 def predict_model():
