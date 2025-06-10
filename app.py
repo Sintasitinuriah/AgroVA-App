@@ -14,7 +14,7 @@ import io
 app = Flask(__name__)
 
 app.secret_key = 'supersecretkey'
-interpreter = tf.lite.Interpreter(model_path="../klasifikasi gambar/model/tflite_model/converted_model.tflite")
+interpreter = tf.lite.Interpreter(model_path="models/converted_model.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
