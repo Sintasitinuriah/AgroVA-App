@@ -2,6 +2,11 @@
 * {
   box-sizing: border-box;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: 'Segoe UI', sans-serif;
   background: #e0f2f1;
@@ -281,12 +286,88 @@ button:hover {
 
 /* Dashboard */
 .main-dashboard {
-  padding: 2rem;
+  padding: 0.8rem;
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  margin-top: 30px;
+  margin-top: 10px;
 }
+
+.image-hero-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  margin-left: calc(-50vw + 50%);
+  padding: 0 50px;
+  flex-direction: column;
+  justify-content:left;
+  align-items:left;
+}
+
+.hero-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  filter: brightness(60%);
+}
+
+.overlay-content {
+  position: relative;
+  z-index: 1;
+  text-align: left;
+  color: white;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Teks utama */
+.overlay-content h1 {
+  font-size: 3.5rem;
+  margin: 0 10px 0 0;
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.overlay-content h5 {
+  font-size: 2rem;
+  margin-bottom: 5px;
+  margin: 10px 25px 10px 0;
+  font-weight: normal;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.overlay-content p {
+  font-size: 1rem;
+  max-width: 600px;
+  margin: 10px 25px 10px 0;
+  line-height: 1.5;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Tombol */
+.start-button {
+  display: inline-block;
+  padding: 10px 25px;
+  background: #004d40;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+}
+
+.start-button:hover {
+  background: #00796b;
+}
+
+.overlay-content button:hover {
+  background-color: #00796b;
+}
+
 .weather-section h2,
 .disease-section h2 {
   margin-bottom: 1rem;
@@ -317,15 +398,66 @@ button:hover {
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
+  gap: 20px;
+  justify-content: center;
+  padding: 20px;
 }
-.card {
-  background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 10px;
-  border-left: 6px solid #004d40;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+
+.flip-card {
+  background-color: transparent;
+  width: 250px;
+  height: 270px;
+  perspective: 1000px;
 }
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.flip-card-front {
+  background: #fff;
+}
+
+.flip-card-front img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.flip-card-front h3 {
+  margin: 10px 0;
+}
+
+.flip-card-back {
+  background-color: #f1f8e9;
+  color: #333;
+  transform: rotateY(180deg);
+  padding: 20px;
+}
+
+.flip-card-back h3 {
+  margin-bottom: 10px;
+}
+
 /* Prediction Cards */
 .prediction-card-grid {
   display: flex;
