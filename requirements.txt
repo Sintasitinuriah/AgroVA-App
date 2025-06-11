@@ -1,8 +1,7 @@
 Flask==2.3.3
 gunicorn==20.0.2
-tensorflow
 numpy
 scikit-learn
-Pillow
-tensorflow-cpu
+Pillow==10.1.0
+tensorflow-cpu==2.13.0
 gdown
