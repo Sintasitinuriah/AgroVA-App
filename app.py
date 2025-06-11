@@ -137,30 +137,27 @@ def index():
 
 @app.route('/predict-main', methods=['POST'])
 def predict():
-    if not interpreter:
-        return render_template('error.html', message="Model not loaded"), 500
+    result = None
+    image = None
 
-    try:
-        image = None
-        if 'imageData' in request.form:
-            image_data = request.form['imageData'].split(',')[1]
-            image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-        elif 'image' in request.files:
-            image = Image.open(request.files['image'].stream)
+    if 'imageData' in request.form and request.form['imageData']:
+        image_data = request.form['imageData'].split(',')[1]
+        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+    elif 'image' in request.files:
+        image = Image.open(request.files['image'].stream)
 
-        if not image:
-            return render_template('weather.html', error="No image provided")
-
+    if image:
         prediction = predict_image(image)
         label_full = label_map[np.argmax(prediction)]
-        plant, disease = label_full.split('_', 1)
-        result = f"{plant.capitalize()} - {disease.replace('_', ' ')}"
 
-        return render_template('weather.html', result=result)
+        # Format output
+        if '_' in label_full:
+            plant, disease = label_full.split('_', 1)
+            result = f"{plant.capitalize()} - {disease.replace('_', ' ')}"
+        else:
+            result = label_full
 
-    except Exception as e:
-        print(f"Prediction error: {str(e)}")
-        return render_template('weather.html', error="Prediction failed"), 500
+    return render_template('weather.html', result=result)
 
 @app.route('/predict-plant', methods=['POST'])
 def predict_model():
