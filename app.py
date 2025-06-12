@@ -345,6 +345,7 @@ def dashboard():
         return "Model belum siap!", 500
 
     prediksi = predict_with_models(interpreter_cuaca, data_7_hari)
+    print("prediksi:", prediksi)
     
     return render_template('dashboard.html', user=session['user'], prediksi=prediksi)
 
