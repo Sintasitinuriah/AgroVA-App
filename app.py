@@ -62,7 +62,7 @@ except Exception as e:
     interpreter = None
     
 # Load Cuaca Model
-interpreter_cuaca = tf.lite.Interpreter(model_path='model/model_predict_cuaca.tflite')
+interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
 interpreter_cuaca.allocate_tensors()
 input_details_cuaca = interpreter_cuaca.get_input_details()
 output_details_cuaca = interpreter_cuaca.get_output_details()
