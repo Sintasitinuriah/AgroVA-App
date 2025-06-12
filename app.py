@@ -61,11 +61,14 @@ except Exception as e:
     print(f"Failed to load main model: {str(e)}")
     interpreter = None
     
-# Load Cuaca Model
-interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
-interpreter_cuaca.allocate_tensors()
-input_details_cuaca = interpreter_cuaca.get_input_details()
-output_details_cuaca = interpreter_cuaca.get_output_details()
+try:
+    interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
+    input_details_cuaca = interpreter_cuaca.get_input_details()
+    output_details_cuaca = interpreter_cuaca.get_output_details()
+    interpreter_cuaca.allocate_tensors()
+except Exception as e:
+    print("[ERROR] Gagal memuat model cuaca:", e)
+    interpreter_cuaca = None
 
 label_map = [
     'gandum_Healthy', 'gandum_septoria', 'gandum_stripe_rust',
@@ -213,8 +216,7 @@ def predict_with_models(interpreter, data_7_hari):
         data = data_7_hari.copy()  # Pastikan tidak ubah data asli
 
         for i in range(7):
-            # Ambil fitur tunggal, misalnya suhu rata-rata (index ke-2)
-            fitur_tunggal = [row[2] for row in data]  # 7 nilai suhu
+            fitur_tunggal = [row[2] for row in data]
             input_array = np.array(fitur_tunggal, dtype=np.float32).reshape(1, 7, 1)
 
             # Jalankan prediksi
