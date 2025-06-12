@@ -65,7 +65,6 @@ try:
     interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
     input_details_cuaca = interpreter_cuaca.get_input_details()
     output_details_cuaca = interpreter_cuaca.get_output_details()
-    interpreter_cuaca.allocate_tensors()
 except Exception as e:
     print("[ERROR] Gagal memuat model cuaca:", e)
     interpreter_cuaca = None
