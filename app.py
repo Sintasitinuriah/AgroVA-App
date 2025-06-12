@@ -60,11 +60,22 @@ try:
 except Exception as e:
     print(f"Failed to load main model: {str(e)}")
     interpreter = None
-    
+
+interpreter_cuaca = None
 try:
-    interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
+    model_path = 'models/model_predict_cuaca.tflite'
+    
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"File model tidak ditemukan di: {model_path}")
+    
+    interpreter_cuaca = tf.lite.Interpreter(model_path=model_path)
+    interpreter_cuaca.allocate_tensors()  # Ini juga penting!
+    
     input_details_cuaca = interpreter_cuaca.get_input_details()
     output_details_cuaca = interpreter_cuaca.get_output_details()
+
+    print("[INFO] Model cuaca berhasil dimuat.")
+
 except Exception as e:
     print("[ERROR] Gagal memuat model cuaca:", e)
     interpreter_cuaca = None
