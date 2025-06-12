@@ -130,31 +130,6 @@
 </main>
 
 <script>
-  const fallbackWeatherData = [
-    { day: 1, temperature: 28 },
-    { day: 2, temperature: 30 },
-    { day: 3, temperature: 29 },
-    { day: 4, temperature: 27 },
-    { day: 5, temperature: 26 },
-    { day: 6, temperature: 25 },
-    { day: 7, temperature: 28 },
-  ];
-
-  const forecastContainer = document.getElementById('weather-forecast');
-
-  // Periksa apakah kontainer kosong (berarti backend gagal mengisi)
-  if (forecastContainer.children.length === 0) {
-    fallbackWeatherData.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'weather-card';
-      card.innerHTML = `
-        <h3>Hari ke-${item.day}</h3>
-        <p>Suhu: ${item.temperature} °C</p>
-      `;
-      forecastContainer.appendChild(card);
-    });
-  }
-
   function showDisease(tanaman) {
     const detail = document.getElementById("disease-detail");
     let content = "";
