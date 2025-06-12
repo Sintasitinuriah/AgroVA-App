@@ -133,7 +133,10 @@ def predict_with_tflite(interpreter, image_array):
 
 @app.route('/')
 def index():
-    return redirect('/login')
+    if 'user' not in session:
+        return redirect('/login')
+    return render_template('dashboard.html', user=session['user'])
+
 
 @app.route('/predict-main', methods=['POST'])
 def predict():
