@@ -40,7 +40,7 @@ download_model_from_drive("1_R3Jndx3nXGWu561HitfW7yzmXUzq-6e", "models/predict_m
 download_model_from_drive("1Ai46UKqNkHfb7U04CUzJHyx-YeNr8V0K", "models/predict_model_disease_potato.tflite")
 download_model_from_drive("1PK-1OYDZEQ8Y6n3NGr7-OjItou0EwrzY", "models/predict_model_disease_cassava.tflite")
 download_model_from_drive("1tzOwkeyD1HdAo1C9LXO8JlhilPtngKIV", "models/converted_model.tflite")
-download_model_from_drive("19JASB4CTAh2nOG7Ym35wzhJWvoozXyIj", "models/model_cuaca.tflite")
+download_model_from_drive("1g60wbq4iVVsULpN45L_IvkGGipKi7KOS", "models/model_predict_cuaca.tflite")
 
 # Model Loading Function
 def load_tflite_model(model_path):
@@ -62,13 +62,10 @@ except Exception as e:
     interpreter = None
     
 # Load Cuaca Model
-try:
-    interpreter_cuaca = load_tflite_model("models/model_cuaca.tflite")
-    input_details_cuaca = interpreter_cuaca.get_input_details()
-    output_details_cuaca = interpreter_cuaca.get_output_details()
-except Exception as e:
-    print(f"Failed to load cuaca model: {str(e)}")
-    interpreter_cuaca = None
+interpreter_cuaca = tf.lite.Interpreter(model_path='models/model_predict_cuaca.tflite')
+interpreter_cuaca.allocate_tensors()
+input_details_cuaca = interpreter_cuaca.get_input_details()
+output_details_cuaca = interpreter_cuaca.get_output_details()
 
 label_map = [
     'gandum_Healthy', 'gandum_septoria', 'gandum_stripe_rust',
@@ -130,64 +127,135 @@ def predict_image(image):
         print(f"Prediction error: {str(e)}")
         raise
 
-def predict_with_tflite(interpreter, image_array):
+def predict_image_model(interpreter, image_array):
+    """
+    Melakukan prediksi menggunakan model berbasis gambar (misal CNN).
+    image_array harus berukuran (height, width, 3) dan sudah dinormalisasi.
+    """
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
 
-    input_data = np.expand_dims(image_array.astype(np.float32), axis=0)
+    input_data = np.expand_dims(image_array.astype(np.float32), axis=0)  # (1, H, W, 3)
     interpreter.set_tensor(input_details[0]['index'], input_data)
     interpreter.invoke()
 
     output_data = interpreter.get_tensor(output_details[0]['index'])
     return output_data
 
-def predict_with_models(data_7_hari):
-    """
-    Input: List of 7 data cuaca (list of feature vectors)
-    Output: List of dicts [{'temperature': xx, 'weather': 'Cerah'}, ...]
-    """
 
+def predict_timeseries_model(interpreter, timeseries_array):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    expected_shape = input_details[0]['shape']
+
+    print("Expected model input shape:", expected_shape)
+    print("Data shape:", np.array(timeseries_array).shape)
+
+    try:
+        data_np = np.array(timeseries_array, dtype=np.float32)
+
+        if list(expected_shape) == [1, 7, 12] and data_np.shape == (7, 12):
+            input_array = data_np.reshape(1, 7, 12)
+
+        elif list(expected_shape) == [1, 84] and data_np.size == 84:
+            input_array = data_np.reshape(1, 84)
+
+        elif list(expected_shape) == [1, 7, 1]:
+            fitur_tunggal = [row[2] for row in timeseries_array]
+            input_array = np.array(fitur_tunggal, dtype=np.float32).reshape(1, 7, 1)
+
+        else:
+            raise ValueError(f"Shape input model tidak cocok dengan data: {data_np.shape}")
+
+        interpreter.set_tensor(input_details[0]['index'], input_array)
+        interpreter.invoke()
+        output_data = interpreter.get_tensor(output_details[0]['index'])
+        return output_data
+
+    except Exception as e:
+        print(f"Error predicting: {e}")
+        return None
+
+def predict_with_tflite(interpreter, data):
+    """
+    Fungsi general untuk prediksi TFLite model.
+    - Jika input shape (1, 224, 224, 3) → diasumsikan model gambar
+    - Jika input shape (1, 7, 1) → diasumsikan model time series
+    """
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    expected_shape = input_details[0]['shape']
+
+    # Model gambar
+    if len(expected_shape) == 4 and list(expected_shape[1:]) == [224, 224, 3]:
+        input_data = np.expand_dims(data.astype(np.float32), axis=0)
+
+    # Model time series
+    elif len(expected_shape) == 3 and list(expected_shape[1:]) == [7, 1]:
+        print("Input shape:", interpreter.get_input_details()[0]['shape'])
+        input_data = np.array(data, dtype=np.float32).reshape(1, 7, 1)
+
+    else:
+        raise ValueError(f"Input shape {expected_shape} tidak dikenali. "
+                         f"Harus gambar (224x224x3) atau time series (7x1)")
+
+    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.invoke()
+    return interpreter.get_tensor(output_details[0]['index'])
+
+
+def predict_with_models(interpreter, data_7_hari):
     results = []
 
-    # Cek input dan output shape dari model suhu
-    expected_shape_suhu = input_details[0]['shape']
-    expected_shape_cuaca = input_details_cuaca[0]['shape']
+    try:
+        cuaca_map = {0: "Cerah", 1: "Hujan", 2: "Berawan", 3: "Mendung"}
 
-    for i, data in enumerate(data_7_hari):
-        try:
-            # Konversi input ke float32 dan reshape sesuai bentuk yang diminta model
-            input_array_suhu = np.array(data, dtype=np.float32).reshape(expected_shape_suhu)
-            input_array_cuaca = np.array(data, dtype=np.float32).reshape(expected_shape_cuaca)
+        data = data_7_hari.copy()  # Pastikan tidak ubah data asli
 
-            # Prediksi suhu
-            interpreter.set_tensor(input_details[0]['index'], input_array_suhu)
+        for i in range(7):
+            # Ambil fitur tunggal, misalnya suhu rata-rata (index ke-2)
+            fitur_tunggal = [row[2] for row in data]  # 7 nilai suhu
+            input_array = np.array(fitur_tunggal, dtype=np.float32).reshape(1, 7, 1)
+
+            # Jalankan prediksi
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+            interpreter.set_tensor(input_details[0]['index'], input_array)
             interpreter.invoke()
-            pred_suhu = interpreter.get_tensor(output_details[0]['index'])[0][0]
+            output = interpreter.get_tensor(output_details[0]['index'])[0]
 
-            # Prediksi cuaca
-            interpreter_cuaca.set_tensor(input_details_cuaca[0]['index'], input_array_cuaca)
-            interpreter_cuaca.invoke()
-            pred_cuaca = interpreter_cuaca.get_tensor(output_details_cuaca[0]['index'])[0]
+            pred_suhu = output[0]
+            pred_cuaca_probs = output[1:]
 
-            # Ambil prediksi kelas cuaca
-            label_cuaca = np.argmax(pred_cuaca)
-            cuaca_map = {0: "Cerah", 1: "Hujan", 2: "Berawan", 3: "Mendung"}
+            # Tangani probabilitas cuaca jika ada
+            if len(pred_cuaca_probs) > 0:
+                label_cuaca = np.argmax(pred_cuaca_probs)
+                cuaca = cuaca_map.get(label_cuaca, "Tidak diketahui")
+            else:
+                cuaca = "Tidak diketahui"
 
             results.append({
                 "day": i + 1,
                 "temperature": round(pred_suhu, 1),
-                "weather": cuaca_map.get(label_cuaca, "Tidak diketahui")
+                "wheater": cuaca
             })
+            
+            fitur_baru = data[-1][:]
+            fitur_baru[2] = pred_suhu 
+            data.pop(0)              
+            data.append(fitur_baru) 
 
-        except Exception as e:
-            print(f"Error predicting day {i + 1}: {str(e)}")
-            results.append({
-                "day": i + 1,
-                "temperature": None,
-                "weather": "Error"
-            })
+    except Exception as e:
+        print(f"Error predicting: {e}")
+        results.append({
+            "day": "Error",
+            "temperature": None,
+            "wheater": "Error"
+        })
 
     return results
+
+
 
 @app.route('/')
 def index():
@@ -270,10 +338,10 @@ def dashboard():
         [25, 33, 29, 58, 0, 9, 2, 200, 3, -6.2, 106.8, 8]
     ]
 
-    if interpreter is None or interpreter_cuaca is None:
+    if  interpreter_cuaca is None:
         return "Model belum siap!", 500
 
-    prediksi = predict_with_models(data_7_hari)
+    prediksi = predict_with_models(interpreter_cuaca, data_7_hari)
     
     return render_template('dashboard.html', user=session['user'], prediksi=prediksi)
 
