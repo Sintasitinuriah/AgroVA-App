@@ -341,12 +341,20 @@ def dashboard():
         [25, 33, 29, 58, 0, 9, 2, 200, 3, -6.2, 106.8, 8]
     ]
 
-    if  interpreter_cuaca is None:
-        return "Model belum siap!", 500
+    try:
+        if interpreter_cuaca is None:
+            raise ValueError("Model cuaca tidak tersedia.")
 
-    prediksi = predict_with_models(interpreter_cuaca, data_7_hari)
-    print("prediksi:", prediksi)
-    
+        prediksi = predict_with_models(interpreter_cuaca, data_7_hari)
+    except Exception as e:
+        print(f"[ERROR] Gagal memprediksi cuaca: {e}")
+
+        # Fallback prediksi statis
+        prediksi = [
+            {"day": i+1, "temperature": temp}
+            for i, temp in enumerate([29, 30, 28, 27, 26, 28, 29])
+        ]
+            
     return render_template('dashboard.html', user=session['user'], prediksi=prediksi)
 
 @app.route('/predict-main')
