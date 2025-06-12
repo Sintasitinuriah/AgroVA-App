@@ -259,7 +259,10 @@ def predict_with_models(interpreter, data_7_hari):
 
 @app.route('/')
 def index():
-    return redirect('/login')
+    if 'user' not in session:
+        return redirect('/login')
+    return render_template('dashboard.html', user=session['user'])
+
 
 @app.route('/predict-main', methods=['POST'])
 def predict():
