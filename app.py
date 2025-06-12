@@ -40,6 +40,7 @@ download_model_from_drive("1_R3Jndx3nXGWu561HitfW7yzmXUzq-6e", "models/predict_m
 download_model_from_drive("1Ai46UKqNkHfb7U04CUzJHyx-YeNr8V0K", "models/predict_model_disease_potato.tflite")
 download_model_from_drive("1PK-1OYDZEQ8Y6n3NGr7-OjItou0EwrzY", "models/predict_model_disease_cassava.tflite")
 download_model_from_drive("1tzOwkeyD1HdAo1C9LXO8JlhilPtngKIV", "models/converted_model.tflite")
+download_model_from_drive("19JASB4CTAh2nOG7Ym35wzhJWvoozXyIj", "models/model_cuaca.tflite")
 
 # Model Loading Function
 def load_tflite_model(model_path):
@@ -59,6 +60,15 @@ try:
 except Exception as e:
     print(f"Failed to load main model: {str(e)}")
     interpreter = None
+    
+# Load Cuaca Model
+try:
+    interpreter_cuaca = load_tflite_model("models/model_cuaca.tflite")
+    input_details_cuaca = interpreter_cuaca.get_input_details()
+    output_details_cuaca = interpreter_cuaca.get_output_details()
+except Exception as e:
+    print(f"Failed to load cuaca model: {str(e)}")
+    interpreter_cuaca = None
 
 label_map = [
     'gandum_Healthy', 'gandum_septoria', 'gandum_stripe_rust',
@@ -131,6 +141,54 @@ def predict_with_tflite(interpreter, image_array):
     output_data = interpreter.get_tensor(output_details[0]['index'])
     return output_data
 
+def predict_with_models(data_7_hari):
+    """
+    Input: List of 7 data cuaca (list of feature vectors)
+    Output: List of dicts [{'temperature': xx, 'weather': 'Cerah'}, ...]
+    """
+
+    results = []
+
+    # Cek input dan output shape dari model suhu
+    expected_shape_suhu = input_details[0]['shape']
+    expected_shape_cuaca = input_details_cuaca[0]['shape']
+
+    for i, data in enumerate(data_7_hari):
+        try:
+            # Konversi input ke float32 dan reshape sesuai bentuk yang diminta model
+            input_array_suhu = np.array(data, dtype=np.float32).reshape(expected_shape_suhu)
+            input_array_cuaca = np.array(data, dtype=np.float32).reshape(expected_shape_cuaca)
+
+            # Prediksi suhu
+            interpreter.set_tensor(input_details[0]['index'], input_array_suhu)
+            interpreter.invoke()
+            pred_suhu = interpreter.get_tensor(output_details[0]['index'])[0][0]
+
+            # Prediksi cuaca
+            interpreter_cuaca.set_tensor(input_details_cuaca[0]['index'], input_array_cuaca)
+            interpreter_cuaca.invoke()
+            pred_cuaca = interpreter_cuaca.get_tensor(output_details_cuaca[0]['index'])[0]
+
+            # Ambil prediksi kelas cuaca
+            label_cuaca = np.argmax(pred_cuaca)
+            cuaca_map = {0: "Cerah", 1: "Hujan", 2: "Berawan", 3: "Mendung"}
+
+            results.append({
+                "day": i + 1,
+                "temperature": round(pred_suhu, 1),
+                "weather": cuaca_map.get(label_cuaca, "Tidak diketahui")
+            })
+
+        except Exception as e:
+            print(f"Error predicting day {i + 1}: {str(e)}")
+            results.append({
+                "day": i + 1,
+                "temperature": None,
+                "weather": "Error"
+            })
+
+    return results
+
 @app.route('/')
 def index():
     return redirect('/login')
@@ -202,12 +260,27 @@ def predict_model():
 def dashboard():
     if 'user' not in session:
         return redirect('/login')
-    return render_template('dashboard.html', user=session['user'])
+    data_7_hari = [
+        [22, 30, 26, 70, 5, 6, 3, 180, 3, -6.2, 106.8, 8],
+        [23, 31, 27, 65, 4, 7, 2, 190, 3, -6.2, 106.8, 8],
+        [22, 29, 25, 72, 6, 5, 4, 170, 3, -6.2, 106.8, 7],
+        [21, 28, 24, 75, 10, 4, 3, 160, 2, -6.2, 106.8, 7],
+        [22, 30, 26, 68, 2, 8, 3, 180, 4, -6.2, 106.8, 8],
+        [24, 32, 28, 60, 0, 9, 2, 190, 3, -6.2, 106.8, 8],
+        [25, 33, 29, 58, 0, 9, 2, 200, 3, -6.2, 106.8, 8]
+    ]
+
+    if interpreter is None or interpreter_cuaca is None:
+        return "Model belum siap!", 500
+
+    prediksi = predict_with_models(data_7_hari)
+    
+    return render_template('dashboard.html', user=session['user'], prediksi=prediksi)
 
 @app.route('/predict-main')
 def predict_weather():
     if 'user' not in session:
-        return redirect('/login')
+        return redirect('/login')  
     return render_template('weather.html', user=session['user'])
 
 @app.route('/chat')

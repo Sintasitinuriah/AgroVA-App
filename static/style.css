@@ -450,12 +450,24 @@ button:hover {
 .flip-card-back {
   background-color: #f1f8e9;
   color: #333;
+  justify-content: left;
   transform: rotateY(180deg);
   padding: 20px;
 }
 
 .flip-card-back h3 {
   margin-bottom: 10px;
+}
+
+.flip-card-back ul {
+  text-align: left;
+  padding-left: 20px;
+  margin: 0;
+  list-style-type: disc;
+}
+
+.flip-card-back li {
+  margin-bottom: 6px;
 }
 
 /* Prediction Cards */
@@ -477,6 +489,14 @@ button:hover {
   transition: transform 0.2s;
   text-align: center;
 }
+
+.prediction-card img{
+  min-width: 100px;
+  max-width: 200px;
+  height: 150px;
+  object-fit: cover;
+}
+
 .prediction-card:hover {
   transform: translateY(-5px);
 }
@@ -527,8 +547,13 @@ form {
   border-radius: 12px;
 }
 
+.form-container h2{
+  margin: 5px 10px 5px 5px;
+}
+
 h2 {
   text-align: center;
+  margin: 0 5px 0 0;
 }
 
 h3 {
